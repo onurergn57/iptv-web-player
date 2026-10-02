@@ -6,46 +6,48 @@ app = Flask(__name__)
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" class="h-full bg-slate-950">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StreamPro IPTV Web Player</title>
+    <title>StreamPro Cinema & TV Player</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 4px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 4px; }
+        ::-webkit-scrollbar-track { background: #090d16; }
+        .glass-card { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .active-tab { background: #4f46e5; color: #ffffff; font-weight: 600; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4); }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col justify-between overflow-x-hidden">
+<body class="h-full text-slate-100 font-sans flex flex-col overflow-hidden bg-slate-950">
 
     <!-- LOGIN MODAL -->
-    <div id="loginModal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 w-full max-w-md p-6 rounded-2xl shadow-2xl space-y-4">
-            <div class="text-center space-y-1">
-                <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-600/20 text-indigo-400 mb-2">
+    <div id="loginModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-50 flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-md p-8 rounded-3xl shadow-2xl space-y-5 border border-slate-800/80">
+            <div class="text-center space-y-2">
+                <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600/20 text-indigo-400 mb-1 border border-indigo-500/30">
                     <i class="fa-solid fa-play text-2xl"></i>
                 </div>
-                <h2 class="text-xl font-bold text-white">IPTV Hesabınıza Giriş Yapın</h2>
-                <p class="text-xs text-slate-400">Sunucu ve üyelik bilgilerinizi giriniz</p>
+                <h2 class="text-2xl font-extrabold text-white tracking-wide">StreamPro IPTV</h2>
+                <p class="text-xs text-slate-400">Üyelik ve sunucu bilgilerinizi girerek bağlanın</p>
             </div>
 
-            <form onsubmit="handleLogin(event)" class="space-y-3">
+            <form onsubmit="handleLogin(event)" class="space-y-4">
                 <div>
-                    <label class="text-[11px] font-medium text-slate-400 block mb-1">Sunucu Adresi (URL)</label>
-                    <input type="text" id="loginHost" placeholder="http://platindpltn.xyz:8080" required class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    <label class="text-[11px] font-semibold text-slate-400 block mb-1 uppercase tracking-wider">Sunucu Adresi</label>
+                    <input type="text" id="loginHost" placeholder="http://platindpltn.xyz:8080" required class="w-full bg-slate-900/90 border border-slate-700/60 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-indigo-500 transition">
                 </div>
                 <div>
-                    <label class="text-[11px] font-medium text-slate-400 block mb-1">Kullanıcı Adı</label>
-                    <input type="text" id="loginUser" placeholder="Kullanıcı Adı" required class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    <label class="text-[11px] font-semibold text-slate-400 block mb-1 uppercase tracking-wider">Kullanıcı Adı</label>
+                    <input type="text" id="loginUser" placeholder="Kullanıcı Adı" required class="w-full bg-slate-900/90 border border-slate-700/60 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-indigo-500 transition">
                 </div>
                 <div>
-                    <label class="text-[11px] font-medium text-slate-400 block mb-1">Şifre</label>
+                    <label class="text-[11px] font-semibold text-slate-400 block mb-1 uppercase tracking-wider">Şifre</label>
                     <div class="relative flex items-center">
-                        <input type="password" id="loginPass" placeholder="Şifre" required class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 pr-9">
+                        <input type="password" id="loginPass" placeholder="Şifre" required class="w-full bg-slate-900/90 border border-slate-700/60 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-indigo-500 transition pr-10">
                         <button type="button" onclick="togglePassView()" class="absolute right-3 text-slate-400 hover:text-white text-xs p-1">
                             <i id="passViewIcon" class="fa-solid fa-eye"></i>
                         </button>
@@ -54,68 +56,106 @@ HTML_TEMPLATE = """
 
                 <div class="flex items-center justify-between pt-1">
                     <label class="flex items-center space-x-2 cursor-pointer text-xs text-slate-300">
-                        <input type="checkbox" id="rememberMe" checked class="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-0">
+                        <input type="checkbox" id="rememberMe" checked class="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0">
                         <span>Beni Hatırla</span>
                     </label>
                 </div>
 
-                <button type="submit" id="btnLogin" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-lg text-xs transition shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2">
+                <button type="submit" id="btnLogin" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl text-xs transition-all shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2">
                     <span>Giriş Yap ve Bağlan</span>
                 </button>
             </form>
-            <div id="loginError" class="hidden text-center text-xs text-rose-400 bg-rose-950/40 p-2.5 rounded border border-rose-800/50 leading-relaxed"></div>
+            <div id="loginError" class="hidden text-center text-xs text-rose-400 bg-rose-950/50 p-3 rounded-xl border border-rose-800/50 leading-relaxed"></div>
         </div>
     </div>
 
-    <!-- MAIN HEADER -->
-    <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+    <!-- NAVBAR -->
+    <header class="bg-slate-900/90 border-b border-slate-800/80 px-6 py-3.5 flex items-center justify-between z-10 backdrop-blur-md">
         <div class="flex items-center space-x-3">
-            <i class="fa-solid fa-play-circle text-indigo-500 text-2xl"></i>
-            <h1 class="font-bold text-base text-white hidden sm:block">StreamPro <span class="text-xs text-indigo-400">Web</span></h1>
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                <i class="fa-solid fa-play text-sm"></i>
+            </div>
+            <h1 class="font-extrabold text-lg text-white tracking-wider">StreamPro <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">WEB</span></h1>
         </div>
 
-        <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
-            <button id="tabLive" onclick="switchType('live')" class="px-3 py-1.5 rounded-lg font-medium transition bg-indigo-600 text-white"><i class="fa-solid fa-tv mr-1.5"></i>Canlı TV</button>
-            <button id="tabMovies" onclick="switchType('movies')" class="px-3 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white"><i class="fa-solid fa-film mr-1.5"></i>Filmler</button>
-            <button id="tabSeries" onclick="switchType('series')" class="px-3 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white"><i class="fa-solid fa-clapperboard mr-1.5"></i>Diziler</button>
+        <!-- TAB NAVIGATION -->
+        <div class="flex bg-slate-950/80 p-1.5 rounded-2xl border border-slate-800 text-xs">
+            <button id="tabLive" onclick="switchType('live')" class="px-5 py-2 rounded-xl font-medium transition-all active-tab flex items-center space-x-2">
+                <i class="fa-solid fa-tv"></i><span>Canlı TV</span>
+            </button>
+            <button id="tabMovies" onclick="switchType('movies')" class="px-5 py-2 rounded-xl font-medium transition-all text-slate-400 hover:text-white flex items-center space-x-2">
+                <i class="fa-solid fa-film"></i><span>Filmler</span>
+            </button>
+            <button id="tabSeries" onclick="switchType('series')" class="px-5 py-2 rounded-xl font-medium transition-all text-slate-400 hover:text-white flex items-center space-x-2">
+                <i class="fa-solid fa-clapperboard"></i><span>Diziler</span>
+            </button>
         </div>
 
-        <button onclick="logout()" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-slate-300 transition">
-            <i class="fa-solid fa-right-from-bracket mr-1"></i>Çıkış
+        <button onclick="logout()" class="text-xs bg-slate-800/80 hover:bg-rose-600/20 hover:text-rose-400 border border-slate-700/50 px-4 py-2 rounded-xl text-slate-300 transition flex items-center space-x-2">
+            <i class="fa-solid fa-right-from-bracket"></i><span class="hidden sm:inline">Çıkış</span>
         </button>
     </header>
 
-    <!-- CONTENT -->
-    <div class="flex flex-col md:flex-row flex-1 h-[calc(100vh-60px)]">
-        <aside class="w-full md:w-96 bg-slate-900/90 border-r border-slate-800 flex flex-col">
-            <div class="p-3 border-b border-slate-800 space-y-2">
+    <!-- MAIN LAYOUT -->
+    <div class="flex flex-1 h-[calc(100vh-65px)] overflow-hidden">
+        
+        <!-- SIDEBAR & CONTENT LIST -->
+        <aside class="w-full md:w-96 bg-slate-900/60 border-r border-slate-800/80 flex flex-col h-full z-10">
+            <!-- SEARCH & FILTER -->
+            <div class="p-4 border-b border-slate-800/80 space-y-3 bg-slate-900/40">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-500 text-xs"></i>
+                    <input type="text" id="searchInput" oninput="applyFilters()" placeholder="İçerik ara..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                </div>
                 <div class="flex space-x-2">
-                    <input type="text" id="searchInput" oninput="applyFilters()" placeholder="İçerik Ara..." class="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none">
-                    <select id="sortSelect" onchange="applyFilters()" class="bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-lg p-2 focus:outline-none">
-                        <option value="default">Varsayılan</option>
-                        <option value="az">A - Z Sırala</option>
-                        <option value="za">Z - A Sırala</option>
+                    <select id="categorySelect" onchange="applyFilters()" class="flex-1 bg-slate-950 border border-slate-800 text-xs text-indigo-300 rounded-xl p-2 focus:outline-none font-semibold truncate">
+                        <option value="ALL">Tüm Kategoriler</option>
+                        <option value="FAV">★ Favorilerim</option>
+                    </select>
+                    <select id="sortSelect" onchange="applyFilters()" class="bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-xl p-2 focus:outline-none">
+                        <option value="default">Sırala</option>
+                        <option value="az">A-Z</option>
+                        <option value="za">Z-A</option>
                     </select>
                 </div>
             </div>
 
-            <div class="px-3 pt-2">
-                <select id="categorySelect" onchange="applyFilters()" class="w-full bg-slate-950 border border-slate-800 text-xs text-indigo-300 rounded-lg p-2 focus:outline-none font-semibold">
-                    <option value="ALL">Tüm Kategoriler</option>
-                    <option value="FAV">★ Favorilerim</option>
-                </select>
-            </div>
-
-            <div id="contentList" class="flex-1 overflow-y-auto p-3 space-y-1">
-                <div class="text-center text-xs text-slate-500 py-10">Lütfen giriş yapın.</div>
+            <!-- STREAM LIST CONTAINER -->
+            <div id="contentList" class="flex-1 overflow-y-auto p-3 space-y-2">
+                <div class="text-center text-xs text-slate-500 py-12 flex flex-col items-center">
+                    <i class="fa-solid fa-spinner animate-spin text-2xl text-indigo-500 mb-2"></i>
+                    <span>Veriler Yükleniyor...</span>
+                </div>
             </div>
         </aside>
 
-        <main class="flex-1 bg-black relative flex flex-col items-center justify-center">
-            <video id="videoPlayer" class="w-full h-full object-contain" controls autoplay playsinline></video>
-            <div id="spinner" class="hidden absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-20">
-                <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                <p id="spinnerText" class="text-xs text-slate-300 mt-3">Yükleniyor...</p>
+        <!-- PLAYER & MAIN DISPLAY -->
+        <main class="flex-1 bg-slate-950 flex flex-col relative overflow-hidden">
+            <!-- CURRENT PLAYING BAR -->
+            <div class="bg-slate-900/80 border-b border-slate-800/80 px-6 py-3 flex items-center justify-between">
+                <div class="flex items-center space-x-3 truncate">
+                    <div id="currentLogo" class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-700/50">
+                        <i class="fa-solid fa-tv text-slate-500 text-xs"></i>
+                    </div>
+                    <div class="truncate">
+                        <h3 id="currentTitle" class="text-xs font-bold text-white truncate">Yayın Seçilmedi</h3>
+                        <p id="currentCategory" class="text-[10px] text-slate-400 truncate">Lütfen listeden bir içerik seçin</p>
+                    </div>
+                </div>
+                <button onclick="toggleFullscreen()" class="text-slate-400 hover:text-white p-2 rounded-lg bg-slate-800/50 border border-slate-700/40 text-xs">
+                    <i class="fa-solid fa-expand"></i>
+                </button>
+            </div>
+
+            <!-- VIDEO CONTAINER -->
+            <div class="flex-1 bg-black relative flex items-center justify-center group">
+                <video id="videoPlayer" class="w-full h-full object-contain" controls autoplay playsinline></video>
+                
+                <!-- SPINNER / OVERLAY -->
+                <div id="spinner" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center z-20">
+                    <div class="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p id="spinnerText" class="text-xs text-slate-300 mt-4 font-medium">Yayın Bağı Kuruluyor...</p>
+                </div>
             </div>
         </main>
     </div>
@@ -225,11 +265,13 @@ HTML_TEMPLATE = """
         function switchType(type) {
             currentType = type;
             ['tabLive', 'tabMovies', 'tabSeries'].forEach(id => {
-                document.getElementById(id).className = "px-3 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white";
+                const el = document.getElementById(id);
+                el.className = "px-5 py-2 rounded-xl font-medium transition-all text-slate-400 hover:text-white flex items-center space-x-2";
             });
-            if(type === 'live') document.getElementById('tabLive').className = "px-3 py-1.5 rounded-lg font-medium transition bg-indigo-600 text-white";
-            if(type === 'movies') document.getElementById('tabMovies').className = "px-3 py-1.5 rounded-lg font-medium transition bg-indigo-600 text-white";
-            if(type === 'series') document.getElementById('tabSeries').className = "px-3 py-1.5 rounded-lg font-medium transition bg-indigo-600 text-white";
+            
+            if(type === 'live') document.getElementById('tabLive').className = "px-5 py-2 rounded-xl font-medium transition-all active-tab flex items-center space-x-2";
+            if(type === 'movies') document.getElementById('tabMovies').className = "px-5 py-2 rounded-xl font-medium transition-all active-tab flex items-center space-x-2";
+            if(type === 'series') document.getElementById('tabSeries').className = "px-5 py-2 rounded-xl font-medium transition-all active-tab flex items-center space-x-2";
 
             fetchData();
         }
@@ -274,17 +316,34 @@ HTML_TEMPLATE = """
                 const id = getStreamId(item);
                 const isFav = favorites.includes(id);
                 const name = item.name || item.title;
+                const iconUrl = item.stream_icon || item.cover || '';
 
-                const div = document.createElement('div');
-                div.className = 'flex items-center justify-between p-2.5 bg-slate-800/40 hover:bg-indigo-600/30 rounded-lg cursor-pointer text-xs font-medium transition border border-slate-800/50 group';
+                const card = document.createElement('div');
+                card.className = 'flex items-center justify-between p-2.5 bg-slate-900/80 hover:bg-indigo-600/20 border border-slate-800/80 hover:border-indigo-500/40 rounded-xl cursor-pointer transition group';
                 
-                div.innerHTML = `
-                    <span class="truncate pr-2 text-slate-200 group-hover:text-white" onclick="playItem('${id}')">${name}</span>
-                    <button onclick="toggleFav('${id}', event)" class="text-slate-500 hover:text-amber-400 p-1">
+                let imgTag = `<div class="w-10 h-10 rounded-lg bg-slate-800/80 border border-slate-700/50 flex items-center justify-center overflow-hidden flex-shrink-0 mr-3">
+                                <i class="fa-solid ${currentType === 'live' ? 'fa-tv' : 'fa-film'} text-slate-500 text-xs"></i>
+                             </div>`;
+
+                if(iconUrl) {
+                    imgTag = `<div class="w-10 h-10 rounded-lg bg-slate-800/80 border border-slate-700/50 overflow-hidden flex-shrink-0 mr-3">
+                                <img src="${iconUrl}" onerror="this.onerror=null; this.src='https://via.placeholder.com/40?text=TV';" class="w-full h-full object-cover">
+                              </div>`;
+                }
+
+                card.innerHTML = `
+                    <div class="flex items-center flex-1 min-w-0" onclick="playItem('${id}', '${name.replace(/'/g, "\\'")}', '${iconUrl}')">
+                        ${imgTag}
+                        <div class="truncate pr-2">
+                            <h4 class="text-xs font-medium text-slate-200 group-hover:text-indigo-300 truncate">${name}</h4>
+                            <p class="text-[10px] text-slate-500">${currentType.toUpperCase()}</p>
+                        </div>
+                    </div>
+                    <button onclick="toggleFav('${id}', event)" class="text-slate-600 hover:text-amber-400 p-2">
                         <i class="fa-solid fa-star ${isFav ? 'text-amber-400' : ''}"></i>
                     </button>
                 `;
-                container.appendChild(div);
+                container.appendChild(card);
             });
         }
 
@@ -303,10 +362,19 @@ HTML_TEMPLATE = """
             applyFilters();
         }
 
-        function playItem(id) {
+        function playItem(id, name, logo) {
+            document.getElementById('currentTitle').innerText = name;
+            document.getElementById('currentCategory').innerText = currentType.toUpperCase();
+            
+            const logoBox = document.getElementById('currentLogo');
+            if(logo) {
+                logoBox.innerHTML = `<img src="${logo}" class="w-full h-full object-cover">`;
+            } else {
+                logoBox.innerHTML = `<i class="fa-solid fa-tv text-slate-500 text-xs"></i>`;
+            }
+
             let ext = 'ts';
-            if(currentType === 'movies') ext = 'mp4';
-            if(currentType === 'series') ext = 'mp4';
+            if(currentType === 'movies' || currentType === 'series') ext = 'mp4';
 
             const streamUrl = `/proxy_stream?host=${encodeURIComponent(authData.host)}&user=${encodeURIComponent(authData.user)}&pass=${encodeURIComponent(authData.pass)}&stream_id=${id}&type=${currentType}&ext=${ext}`;
 
@@ -315,7 +383,7 @@ HTML_TEMPLATE = """
 
             if(hls) hls.destroy();
 
-            if (Hls.isSupported() && currentType === 'live') {
+            if (Hls.isSupported() && (currentType === 'live' || ext === 'm3u8')) {
                 hls = new Hls();
                 hls.loadSource(streamUrl);
                 hls.attachMedia(video);
@@ -330,6 +398,15 @@ HTML_TEMPLATE = """
                 video.src = streamUrl;
                 video.play().catch(()=>{});
                 document.getElementById('spinner').classList.add('hidden');
+            }
+        }
+
+        function toggleFullscreen() {
+            const video = document.getElementById('videoPlayer');
+            if (video.requestFullscreen) {
+                video.requestFullscreen();
+            } else if (video.webkitRequestFullscreen) {
+                video.webkitRequestFullscreen();
             }
         }
 
@@ -367,7 +444,7 @@ def get_categories():
     try:
         r = requests.get(url, headers=HEADERS, timeout=15, allow_redirects=True)
         return Response(r.content, mimetype='application/json')
-    except Exception as e:
+    except Exception:
         return jsonify([])
 
 @app.route('/api/streams')
@@ -386,7 +463,7 @@ def get_streams():
         r = requests.get(url, headers=HEADERS, timeout=20, allow_redirects=True)
         return Response(r.content, mimetype='application/json')
     except Exception as e:
-        return jsonify({"error": f"Sunucuya ulaşılamadı: {str(e)}"})
+        return jsonify({"error": f"Sunucu hatası: {str(e)}"})
 
 @app.route('/proxy_stream')
 def proxy_stream():
@@ -406,9 +483,9 @@ def proxy_stream():
 
     try:
         req = requests.get(stream_url, headers=HEADERS, stream=True, timeout=20, allow_redirects=True)
-        return Response(req.iter_content(chunk_size=8192), content_type=req.headers.get('content-type', 'video/mp2t'))
+        return Response(req.iter_content(chunk_size=16384), content_type=req.headers.get('content-type', 'video/mp2t'))
     except Exception:
-        return Response("Yayın Hatası", status=500)
+        return Response("Yayın Akışı Başarısız", status=500)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
