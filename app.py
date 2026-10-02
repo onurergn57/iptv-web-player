@@ -1,5 +1,6 @@
 import os
-from flask import Flask, render_template_string
+import requests
+from flask import Flask, render_template_string, request, Response, jsonify
 
 app = Flask(__name__)
 
@@ -106,7 +107,7 @@ HTML_TEMPLATE = """
             </div>
 
             <div id="contentList" class="flex-1 overflow-y-auto p-3 space-y-1">
-                <div class="text-center text-xs text-slate-500 py-10">Giriş Yapılıyor...</div>
+                <div class="text-center text-xs text-slate-500 py-10">Lütfen giriş yapın.</div>
             </div>
         </aside>
 
@@ -173,48 +174,35 @@ HTML_TEMPLATE = """
             fetchData();
         }
 
-        async function directFetch(targetUrl) {
-            // Doğrudan kullanıcının IP'sinden istek atar. İptv sunucusu CORS engeli verirse güvenli proxy devreye girer.
-            try {
-                const res = await fetch(targetUrl);
-                if(res.ok) return await res.json();
-            } catch(e) {}
-
-            // CORS engeli için tarayıcı bazlı alternatif proxy
-            const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
-            const res2 = await fetch(proxyUrl);
-            return await res2.json();
-        }
-
         async function fetchData() {
             const btn = document.getElementById('btnLogin');
             const err = document.getElementById('loginError');
             err.classList.add('hidden');
             if(btn) btn.innerText = 'Bağlanılıyor...';
 
-            let catAction = "get_live_categories";
-            let streamAction = "get_live_streams";
-
-            if(currentType === 'movies') { catAction = "get_vod_categories"; streamAction = "get_vod_streams"; }
-            if(currentType === 'series') { catAction = "get_series_categories"; streamAction = "get_series"; }
-
-            const catUrl = `${authData.host}/player_api.php?username=${authData.user}&password=${authData.pass}&action=${catAction}`;
-            const streamUrl = `${authData.host}/player_api.php?username=${authData.user}&password=${authData.pass}&action=${streamAction}`;
-
             try {
-                categories = await directFetch(catUrl);
-                rawItems = await directFetch(streamUrl);
+                const catRes = await fetch(`/api/categories?host=${encodeURIComponent(authData.host)}&user=${encodeURIComponent(authData.user)}&pass=${encodeURIComponent(authData.pass)}&type=${currentType}`);
+                categories = await catRes.json();
 
-                if(!Array.isArray(rawItems) || rawItems.length === 0) {
-                    throw new Error('Kullanıcı adı veya şifre hatalı!');
+                const streamRes = await fetch(`/api/streams?host=${encodeURIComponent(authData.host)}&user=${encodeURIComponent(authData.user)}&pass=${encodeURIComponent(authData.pass)}&type=${currentType}`);
+                const streamData = await streamRes.json();
+
+                if(streamData.error) {
+                    throw new Error(streamData.error);
                 }
+
+                if(!Array.isArray(streamData) || streamData.length === 0) {
+                    throw new Error('Kullanıcı adı, şifre veya sunucu adresi hatalı!');
+                }
+
+                rawItems = streamData;
 
                 document.getElementById('loginModal').classList.add('hidden');
                 populateCategories();
                 applyFilters();
 
             } catch(e) {
-                err.innerText = 'Giriş Başarısız! Kullanıcı adı/şifre veya sunucu adresini kontrol edin.';
+                err.innerText = e.message || 'Giriş Başarısız! Lütfen bilgilerinizi kontrol edin.';
                 err.classList.remove('hidden');
             } finally {
                 if(btn) btn.innerText = 'Giriş Yap ve Bağlan';
@@ -320,11 +308,7 @@ HTML_TEMPLATE = """
             if(currentType === 'movies') ext = 'mp4';
             if(currentType === 'series') ext = 'mp4';
 
-            let typePath = 'live';
-            if(currentType === 'movies') typePath = 'movie';
-            if(currentType === 'series') typePath = 'series';
-
-            const streamUrl = `${authData.host}/${typePath}/${authData.user}/${authData.pass}/${id}.${ext}`;
+            const streamUrl = `/proxy_stream?host=${encodeURIComponent(authData.host)}&user=${encodeURIComponent(authData.user)}&pass=${encodeURIComponent(authData.pass)}&stream_id=${id}&type=${currentType}&ext=${ext}`;
 
             const video = document.getElementById('videoPlayer');
             document.getElementById('spinner').classList.remove('hidden');
@@ -358,9 +342,73 @@ HTML_TEMPLATE = """
 </html>
 """
 
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': '*/*',
+    'Connection': 'keep-alive'
+}
+
 @app.route('/')
 def index():
     return render_template_string(HTML_TEMPLATE)
+
+@app.route('/api/categories')
+def get_categories():
+    host = request.args.get('host', '').rstrip('/')
+    user = request.args.get('user')
+    pass_ = request.args.get('pass')
+    type_ = request.args.get('type', 'live')
+
+    action = "get_live_categories"
+    if type_ == "movies": action = "get_vod_categories"
+    if type_ == "series": action = "get_series_categories"
+
+    url = f"{host}/player_api.php?username={user}&password={pass_}&action={action}"
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=15, allow_redirects=True)
+        return Response(r.content, mimetype='application/json')
+    except Exception as e:
+        return jsonify([])
+
+@app.route('/api/streams')
+def get_streams():
+    host = request.args.get('host', '').rstrip('/')
+    user = request.args.get('user')
+    pass_ = request.args.get('pass')
+    type_ = request.args.get('type', 'live')
+
+    action = "get_live_streams"
+    if type_ == "movies": action = "get_vod_streams"
+    if type_ == "series": action = "get_series"
+
+    url = f"{host}/player_api.php?username={user}&password={pass_}&action={action}"
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=20, allow_redirects=True)
+        return Response(r.content, mimetype='application/json')
+    except Exception as e:
+        return jsonify({"error": f"Sunucuya ulaşılamadı: {str(e)}"})
+
+@app.route('/proxy_stream')
+def proxy_stream():
+    host = request.args.get('host', '').rstrip('/')
+    user = request.args.get('user')
+    pass_ = request.args.get('pass')
+    stream_id = request.args.get('stream_id')
+    type_ = request.args.get('type', 'live')
+    ext = request.args.get('ext', 'ts')
+
+    if type_ == 'live':
+        stream_url = f"{host}/live/{user}/{pass_}/{stream_id}.{ext}"
+    elif type_ == 'movies':
+        stream_url = f"{host}/movie/{user}/{pass_}/{stream_id}.{ext}"
+    else:
+        stream_url = f"{host}/series/{user}/{pass_}/{stream_id}.{ext}"
+
+    try:
+        req = requests.get(stream_url, headers=HEADERS, stream=True, timeout=20, allow_redirects=True)
+        return Response(req.iter_content(chunk_size=8192), content_type=req.headers.get('content-type', 'video/mp2t'))
+    except Exception:
+        return Response("Yayın Hatası", status=500)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
