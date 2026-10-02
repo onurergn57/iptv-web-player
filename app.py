@@ -1,6 +1,5 @@
 import os
-import requests
-from flask import Flask, render_template_string, request, Response
+from flask import Flask, render_template_string
 
 app = Flask(__name__)
 
@@ -22,8 +21,8 @@ HTML_TEMPLATE = """
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col justify-between overflow-x-hidden">
 
-    <!-- LOGIN MODAL (ORTALANMIŞ GİRİŞ EKRANI) -->
-    <div id="loginModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <!-- LOGIN MODAL -->
+    <div id="loginModal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 w-full max-w-md p-6 rounded-2xl shadow-2xl space-y-4">
             <div class="text-center space-y-1">
                 <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-600/20 text-indigo-400 mb-2">
@@ -36,7 +35,7 @@ HTML_TEMPLATE = """
             <form onsubmit="handleLogin(event)" class="space-y-3">
                 <div>
                     <label class="text-[11px] font-medium text-slate-400 block mb-1">Sunucu Adresi (URL)</label>
-                    <input type="text" id="loginHost" placeholder="http://sunucu adresi:port" required class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    <input type="text" id="loginHost" placeholder="http://platindpltn.xyz:8080" required class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
                 </div>
                 <div>
                     <label class="text-[11px] font-medium text-slate-400 block mb-1">Kullanıcı Adı</label>
@@ -44,7 +43,12 @@ HTML_TEMPLATE = """
                 </div>
                 <div>
                     <label class="text-[11px] font-medium text-slate-400 block mb-1">Şifre</label>
-                    <input type="password" id="loginPass" placeholder="Şifre" required class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    <div class="relative flex items-center">
+                        <input type="password" id="loginPass" placeholder="Şifre" required class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 pr-9">
+                        <button type="button" onclick="togglePassView()" class="absolute right-3 text-slate-400 hover:text-white text-xs p-1">
+                            <i id="passViewIcon" class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="flex items-center justify-between pt-1">
@@ -58,18 +62,17 @@ HTML_TEMPLATE = """
                     <span>Giriş Yap ve Bağlan</span>
                 </button>
             </form>
-            <div id="loginError" class="hidden text-center text-xs text-rose-400 bg-rose-950/40 p-2 rounded border border-rose-800/50"></div>
+            <div id="loginError" class="hidden text-center text-xs text-rose-400 bg-rose-950/40 p-2.5 rounded border border-rose-800/50 leading-relaxed"></div>
         </div>
     </div>
 
-    <!-- MAIN APP HEADER -->
+    <!-- MAIN HEADER -->
     <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
         <div class="flex items-center space-x-3">
             <i class="fa-solid fa-play-circle text-indigo-500 text-2xl"></i>
             <h1 class="font-bold text-base text-white hidden sm:block">StreamPro <span class="text-xs text-indigo-400">Web</span></h1>
         </div>
 
-        <!-- YAYIN TÜRÜ SEKMELERİ -->
         <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
             <button id="tabLive" onclick="switchType('live')" class="px-3 py-1.5 rounded-lg font-medium transition bg-indigo-600 text-white"><i class="fa-solid fa-tv mr-1.5"></i>Canlı TV</button>
             <button id="tabMovies" onclick="switchType('movies')" class="px-3 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white"><i class="fa-solid fa-film mr-1.5"></i>Filmler</button>
@@ -81,13 +84,9 @@ HTML_TEMPLATE = """
         </button>
     </header>
 
-    <!-- PLAYER & CONTENT GRID -->
+    <!-- CONTENT -->
     <div class="flex flex-col md:flex-row flex-1 h-[calc(100vh-60px)]">
-        
-        <!-- PANELS: KATEGORİ VE KANALLAR -->
         <aside class="w-full md:w-96 bg-slate-900/90 border-r border-slate-800 flex flex-col">
-            
-            <!-- ARAMA VE SIRALAMA FİLTRELERİ -->
             <div class="p-3 border-b border-slate-800 space-y-2">
                 <div class="flex space-x-2">
                     <input type="text" id="searchInput" oninput="applyFilters()" placeholder="İçerik Ara..." class="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none">
@@ -99,24 +98,20 @@ HTML_TEMPLATE = """
                 </div>
             </div>
 
-            <!-- KATEGORİ SEÇİCİ DROPDOWN -->
             <div class="px-3 pt-2">
-                <select id="categorySelect" onchange="onCategoryChange()" class="w-full bg-slate-950 border border-slate-800 text-xs text-indigo-300 rounded-lg p-2 focus:outline-none font-semibold">
+                <select id="categorySelect" onchange="applyFilters()" class="w-full bg-slate-950 border border-slate-800 text-xs text-indigo-300 rounded-lg p-2 focus:outline-none font-semibold">
                     <option value="ALL">Tüm Kategoriler</option>
                     <option value="FAV">★ Favorilerim</option>
                 </select>
             </div>
 
-            <!-- KANAL / İÇERİK LİSTESİ -->
             <div id="contentList" class="flex-1 overflow-y-auto p-3 space-y-1">
-                <div class="text-center text-xs text-slate-500 py-10">Lütfen giriş yapın.</div>
+                <div class="text-center text-xs text-slate-500 py-10">Giriş Yapılıyor...</div>
             </div>
         </aside>
 
-        <!-- VIDEO PLAYER MAIN PANEL -->
         <main class="flex-1 bg-black relative flex flex-col items-center justify-center">
             <video id="videoPlayer" class="w-full h-full object-contain" controls autoplay playsinline></video>
-            
             <div id="spinner" class="hidden absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-20">
                 <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
                 <p id="spinnerText" class="text-xs text-slate-300 mt-3">Yükleniyor...</p>
@@ -126,7 +121,7 @@ HTML_TEMPLATE = """
 
     <script>
         let authData = { host: '', user: '', pass: '' };
-        let currentType = 'live'; // 'live', 'movies', 'series'
+        let currentType = 'live';
         let rawItems = [];
         let categories = [];
         let favorites = JSON.parse(localStorage.getItem('iptv_favs') || '[]');
@@ -142,6 +137,18 @@ HTML_TEMPLATE = """
                 fetchData();
             }
         };
+
+        function togglePassView() {
+            const passInput = document.getElementById('loginPass');
+            const icon = document.getElementById('passViewIcon');
+            if(passInput.type === 'password') {
+                passInput.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                passInput.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        }
 
         async function handleLogin(e) {
             e.preventDefault();
@@ -166,23 +173,40 @@ HTML_TEMPLATE = """
             fetchData();
         }
 
+        async function directFetch(targetUrl) {
+            // Doğrudan kullanıcının IP'sinden istek atar. İptv sunucusu CORS engeli verirse güvenli proxy devreye girer.
+            try {
+                const res = await fetch(targetUrl);
+                if(res.ok) return await res.json();
+            } catch(e) {}
+
+            // CORS engeli için tarayıcı bazlı alternatif proxy
+            const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
+            const res2 = await fetch(proxyUrl);
+            return await res2.json();
+        }
+
         async function fetchData() {
             const btn = document.getElementById('btnLogin');
             const err = document.getElementById('loginError');
             err.classList.add('hidden');
             if(btn) btn.innerText = 'Bağlanılıyor...';
 
-            try {
-                // Öncellikle kategorileri çek
-                const catRes = await fetch(`/api/categories?host=${encodeURIComponent(authData.host)}&user=${authData.user}&pass=${authData.pass}&type=${currentType}`);
-                categories = await catRes.json();
+            let catAction = "get_live_categories";
+            let streamAction = "get_live_streams";
 
-                // İçerikleri çek
-                const streamRes = await fetch(`/api/streams?host=${encodeURIComponent(authData.host)}&user=${authData.user}&pass=${authData.pass}&type=${currentType}`);
-                rawItems = await streamRes.json();
+            if(currentType === 'movies') { catAction = "get_vod_categories"; streamAction = "get_vod_streams"; }
+            if(currentType === 'series') { catAction = "get_series_categories"; streamAction = "get_series"; }
+
+            const catUrl = `${authData.host}/player_api.php?username=${authData.user}&password=${authData.pass}&action=${catAction}`;
+            const streamUrl = `${authData.host}/player_api.php?username=${authData.user}&password=${authData.pass}&action=${streamAction}`;
+
+            try {
+                categories = await directFetch(catUrl);
+                rawItems = await directFetch(streamUrl);
 
                 if(!Array.isArray(rawItems) || rawItems.length === 0) {
-                    throw new Error('İçerik çekilemedi. Bilgilerinizi kontrol edin.');
+                    throw new Error('Kullanıcı adı veya şifre hatalı!');
                 }
 
                 document.getElementById('loginModal').classList.add('hidden');
@@ -190,7 +214,7 @@ HTML_TEMPLATE = """
                 applyFilters();
 
             } catch(e) {
-                err.innerText = 'Sunucuya bağlanılamadı! Lütfen sunucu adresi, kullanıcı adı ve şifrenizi kontrol edin.';
+                err.innerText = 'Giriş Başarısız! Kullanıcı adı/şifre veya sunucu adresini kontrol edin.';
                 err.classList.remove('hidden');
             } finally {
                 if(btn) btn.innerText = 'Giriş Yap ve Bağlan';
@@ -200,12 +224,14 @@ HTML_TEMPLATE = """
         function populateCategories() {
             const select = document.getElementById('categorySelect');
             select.innerHTML = '<option value="ALL">Tüm Kategoriler</option><option value="FAV">★ Favorilerim</option>';
-            categories.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.category_id;
-                opt.innerText = c.category_name;
-                select.appendChild(opt);
-            });
+            if(Array.isArray(categories)) {
+                categories.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.category_id;
+                    opt.innerText = c.category_name;
+                    select.appendChild(opt);
+                });
+            }
         }
 
         function switchType(type) {
@@ -218,10 +244,6 @@ HTML_TEMPLATE = """
             if(type === 'series') document.getElementById('tabSeries').className = "px-3 py-1.5 rounded-lg font-medium transition bg-indigo-600 text-white";
 
             fetchData();
-        }
-
-        function onCategoryChange() {
-            applyFilters();
         }
 
         function applyFilters() {
@@ -298,7 +320,11 @@ HTML_TEMPLATE = """
             if(currentType === 'movies') ext = 'mp4';
             if(currentType === 'series') ext = 'mp4';
 
-            const streamUrl = `/proxy_stream?host=${encodeURIComponent(authData.host)}&user=${authData.user}&pass=${authData.pass}&stream_id=${id}&type=${currentType}&ext=${ext}`;
+            let typePath = 'live';
+            if(currentType === 'movies') typePath = 'movie';
+            if(currentType === 'series') typePath = 'series';
+
+            const streamUrl = `${authData.host}/${typePath}/${authData.user}/${authData.pass}/${id}.${ext}`;
 
             const video = document.getElementById('videoPlayer');
             document.getElementById('spinner').classList.remove('hidden');
@@ -311,6 +337,9 @@ HTML_TEMPLATE = """
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
                     video.play().catch(()=>{});
+                    document.getElementById('spinner').classList.add('hidden');
+                });
+                hls.on(Hls.Events.ERROR, () => {
                     document.getElementById('spinner').classList.add('hidden');
                 });
             } else {
@@ -332,64 +361,6 @@ HTML_TEMPLATE = """
 @app.route('/')
 def index():
     return render_template_string(HTML_TEMPLATE)
-
-@app.route('/api/categories')
-def get_categories():
-    host = request.args.get('host', '').rstrip('/')
-    user = request.args.get('user')
-    pass_ = request.args.get('pass')
-    type_ = request.args.get('type', 'live')
-
-    action = "get_live_categories"
-    if type_ == "movies": action = "get_vod_categories"
-    if type_ == "series": action = "get_series_categories"
-
-    url = f"{host}/player_api.php?username={user}&password={pass_}&action={action}"
-    try:
-        r = requests.get(url, timeout=10)
-        return Response(r.text, mimetype='application/json')
-    except Exception:
-        return Response("[]", mimetype='application/json')
-
-@app.route('/api/streams')
-def get_streams():
-    host = request.args.get('host', '').rstrip('/')
-    user = request.args.get('user')
-    pass_ = request.args.get('pass')
-    type_ = request.args.get('type', 'live')
-
-    action = "get_live_streams"
-    if type_ == "movies": action = "get_vod_streams"
-    if type_ == "series": action = "get_series"
-
-    url = f"{host}/player_api.php?username={user}&password={pass_}&action={action}"
-    try:
-        r = requests.get(url, timeout=12)
-        return Response(r.text, mimetype='application/json')
-    except Exception:
-        return Response("[]", mimetype='application/json')
-
-@app.route('/proxy_stream')
-def proxy_stream():
-    host = request.args.get('host', '').rstrip('/')
-    user = request.args.get('user')
-    pass_ = request.args.get('pass')
-    stream_id = request.args.get('stream_id')
-    type_ = request.args.get('type', 'live')
-    ext = request.args.get('ext', 'ts')
-
-    if type_ == 'live':
-        stream_url = f"{host}/live/{user}/{pass_}/{stream_id}.{ext}"
-    elif type_ == 'movies':
-        stream_url = f"{host}/movie/{user}/{pass_}/{stream_id}.{ext}"
-    else:
-        stream_url = f"{host}/series/{user}/{pass_}/{stream_id}.{ext}"
-
-    try:
-        req = requests.get(stream_url, stream=True, timeout=15)
-        return Response(req.iter_content(chunk_size=4096), content_type=req.headers.get('content-type', 'video/mp2t'))
-    except Exception:
-        return Response("Yayın Hatası", status=500)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
