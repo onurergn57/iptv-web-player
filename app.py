@@ -10,51 +10,111 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StreamPro Web Player</title>
+    <title>StreamPro IPTV Web Player</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 4px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col overflow-hidden">
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col justify-between overflow-x-hidden">
 
-    <header class="bg-slate-900/90 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
-        <div class="flex items-center space-x-2">
-            <i class="fa-solid fa-play-circle text-indigo-500 text-2xl"></i>
-            <h1 class="font-bold text-lg text-white">StreamPro <span class="text-xs text-indigo-400">Web Player</span></h1>
-        </div>
-        <div id="statusLabel" class="text-xs text-slate-400 font-medium">Bağlantı Yok</div>
-    </header>
-
-    <div class="flex flex-col md:flex-row flex-1 h-[calc(100vh-57px)]">
-        <!-- Sidebar / Sol Panel -->
-        <aside class="w-full md:w-80 bg-slate-900/80 border-r border-slate-800 p-3 flex flex-col space-y-3">
-            <div class="space-y-2 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-                <input type="text" id="host" placeholder="Sunucu Adresi (http://sunucu:8080)" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-indigo-500">
-                <input type="text" id="user" placeholder="Kullanıcı Adı" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-indigo-500">
-                <div class="relative flex items-center">
-                    <input type="password" id="pass" placeholder="Şifre" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-indigo-500 pr-8">
-                    <button type="button" onclick="togglePass()" class="absolute right-2 text-slate-400 hover:text-white p-1 text-xs">
-                        <i id="passIcon" class="fa-solid fa-eye"></i>
-                    </button>
+    <!-- LOGIN MODAL (ORTALANMIŞ GİRİŞ EKRANI) -->
+    <div id="loginModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-md p-6 rounded-2xl shadow-2xl space-y-4">
+            <div class="text-center space-y-1">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-600/20 text-indigo-400 mb-2">
+                    <i class="fa-solid fa-play text-2xl"></i>
                 </div>
-                <button onclick="loadStreams()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 rounded-lg text-xs transition shadow-lg shadow-indigo-600/30">
-                    Giriş Yap ve Yükle
-                </button>
+                <h2 class="text-xl font-bold text-white">IPTV Hesabınıza Giriş Yapın</h2>
+                <p class="text-xs text-slate-400">Sunucu ve üyelik bilgilerinizi giriniz</p>
             </div>
 
-            <input type="text" id="searchInput" oninput="filterChannels()" placeholder="Kanal Ara..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none">
+            <form onsubmit="handleLogin(event)" class="space-y-3">
+                <div>
+                    <label class="text-[11px] font-medium text-slate-400 block mb-1">Sunucu Adresi (URL)</label>
+                    <input type="text" id="loginHost" placeholder="http://sunucu adresi:port" required class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="text-[11px] font-medium text-slate-400 block mb-1">Kullanıcı Adı</label>
+                    <input type="text" id="loginUser" placeholder="Kullanıcı Adı" required class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="text-[11px] font-medium text-slate-400 block mb-1">Şifre</label>
+                    <input type="password" id="loginPass" placeholder="Şifre" required class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                </div>
 
-            <div id="channelList" class="flex-1 overflow-y-auto space-y-1 pr-1">
-                <div class="text-center text-xs text-slate-500 py-10">Lütfen IPTV bilgilerinizi girip Giriş Yap butonuna basın.</div>
+                <div class="flex items-center justify-between pt-1">
+                    <label class="flex items-center space-x-2 cursor-pointer text-xs text-slate-300">
+                        <input type="checkbox" id="rememberMe" checked class="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-0">
+                        <span>Beni Hatırla</span>
+                    </label>
+                </div>
+
+                <button type="submit" id="btnLogin" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-lg text-xs transition shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2">
+                    <span>Giriş Yap ve Bağlan</span>
+                </button>
+            </form>
+            <div id="loginError" class="hidden text-center text-xs text-rose-400 bg-rose-950/40 p-2 rounded border border-rose-800/50"></div>
+        </div>
+    </div>
+
+    <!-- MAIN APP HEADER -->
+    <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <i class="fa-solid fa-play-circle text-indigo-500 text-2xl"></i>
+            <h1 class="font-bold text-base text-white hidden sm:block">StreamPro <span class="text-xs text-indigo-400">Web</span></h1>
+        </div>
+
+        <!-- YAYIN TÜRÜ SEKMELERİ -->
+        <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+            <button id="tabLive" onclick="switchType('live')" class="px-3 py-1.5 rounded-lg font-medium transition bg-indigo-600 text-white"><i class="fa-solid fa-tv mr-1.5"></i>Canlı TV</button>
+            <button id="tabMovies" onclick="switchType('movies')" class="px-3 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white"><i class="fa-solid fa-film mr-1.5"></i>Filmler</button>
+            <button id="tabSeries" onclick="switchType('series')" class="px-3 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white"><i class="fa-solid fa-clapperboard mr-1.5"></i>Diziler</button>
+        </div>
+
+        <button onclick="logout()" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-slate-300 transition">
+            <i class="fa-solid fa-right-from-bracket mr-1"></i>Çıkış
+        </button>
+    </header>
+
+    <!-- PLAYER & CONTENT GRID -->
+    <div class="flex flex-col md:flex-row flex-1 h-[calc(100vh-60px)]">
+        
+        <!-- PANELS: KATEGORİ VE KANALLAR -->
+        <aside class="w-full md:w-96 bg-slate-900/90 border-r border-slate-800 flex flex-col">
+            
+            <!-- ARAMA VE SIRALAMA FİLTRELERİ -->
+            <div class="p-3 border-b border-slate-800 space-y-2">
+                <div class="flex space-x-2">
+                    <input type="text" id="searchInput" oninput="applyFilters()" placeholder="İçerik Ara..." class="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none">
+                    <select id="sortSelect" onchange="applyFilters()" class="bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-lg p-2 focus:outline-none">
+                        <option value="default">Varsayılan</option>
+                        <option value="az">A - Z Sırala</option>
+                        <option value="za">Z - A Sırala</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- KATEGORİ SEÇİCİ DROPDOWN -->
+            <div class="px-3 pt-2">
+                <select id="categorySelect" onchange="onCategoryChange()" class="w-full bg-slate-950 border border-slate-800 text-xs text-indigo-300 rounded-lg p-2 focus:outline-none font-semibold">
+                    <option value="ALL">Tüm Kategoriler</option>
+                    <option value="FAV">★ Favorilerim</option>
+                </select>
+            </div>
+
+            <!-- KANAL / İÇERİK LİSTESİ -->
+            <div id="contentList" class="flex-1 overflow-y-auto p-3 space-y-1">
+                <div class="text-center text-xs text-slate-500 py-10">Lütfen giriş yapın.</div>
             </div>
         </aside>
 
-        <!-- Video Player / Sağ Panel -->
-        <main class="flex-1 bg-black relative flex items-center justify-center">
+        <!-- VIDEO PLAYER MAIN PANEL -->
+        <main class="flex-1 bg-black relative flex flex-col items-center justify-center">
             <video id="videoPlayer" class="w-full h-full object-contain" controls autoplay playsinline></video>
             
             <div id="spinner" class="hidden absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-20">
@@ -65,108 +125,204 @@ HTML_TEMPLATE = """
     </div>
 
     <script>
-        let rawChannels = [];
+        let authData = { host: '', user: '', pass: '' };
+        let currentType = 'live'; // 'live', 'movies', 'series'
+        let rawItems = [];
+        let categories = [];
+        let favorites = JSON.parse(localStorage.getItem('iptv_favs') || '[]');
         let hls = null;
 
-        function togglePass() {
-            const input = document.getElementById('pass');
-            const icon = document.getElementById('passIcon');
-            if(input.type === 'password') {
-                input.type = 'text';
-                icon.className = 'fa-solid fa-eye-slash';
+        window.onload = () => {
+            const saved = localStorage.getItem('iptv_auth');
+            if(saved) {
+                authData = JSON.parse(saved);
+                document.getElementById('loginHost').value = authData.host;
+                document.getElementById('loginUser').value = authData.user;
+                document.getElementById('loginPass').value = authData.pass;
+                fetchData();
+            }
+        };
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            let host = document.getElementById('loginHost').value.trim();
+            if(!host.startsWith('http://') && !host.startsWith('https://')) {
+                host = 'http://' + host;
+            }
+            host = host.replace(/\/+$/, "");
+
+            authData = {
+                host: host,
+                user: document.getElementById('loginUser').value.trim(),
+                pass: document.getElementById('loginPass').value.trim()
+            };
+
+            if(document.getElementById('rememberMe').checked) {
+                localStorage.setItem('iptv_auth', JSON.stringify(authData));
             } else {
-                input.type = 'password';
-                icon.className = 'fa-solid fa-eye';
+                localStorage.removeItem('iptv_auth');
+            }
+
+            fetchData();
+        }
+
+        async function fetchData() {
+            const btn = document.getElementById('btnLogin');
+            const err = document.getElementById('loginError');
+            err.classList.add('hidden');
+            if(btn) btn.innerText = 'Bağlanılıyor...';
+
+            try {
+                // Öncellikle kategorileri çek
+                const catRes = await fetch(`/api/categories?host=${encodeURIComponent(authData.host)}&user=${authData.user}&pass=${authData.pass}&type=${currentType}`);
+                categories = await catRes.json();
+
+                // İçerikleri çek
+                const streamRes = await fetch(`/api/streams?host=${encodeURIComponent(authData.host)}&user=${authData.user}&pass=${authData.pass}&type=${currentType}`);
+                rawItems = await streamRes.json();
+
+                if(!Array.isArray(rawItems) || rawItems.length === 0) {
+                    throw new Error('İçerik çekilemedi. Bilgilerinizi kontrol edin.');
+                }
+
+                document.getElementById('loginModal').classList.add('hidden');
+                populateCategories();
+                applyFilters();
+
+            } catch(e) {
+                err.innerText = 'Sunucuya bağlanılamadı! Lütfen sunucu adresi, kullanıcı adı ve şifrenizi kontrol edin.';
+                err.classList.remove('hidden');
+            } finally {
+                if(btn) btn.innerText = 'Giriş Yap ve Bağlan';
             }
         }
 
-        async function loadStreams() {
-            const host = document.getElementById('host').value.trim();
-            const user = document.getElementById('user').value.trim();
-            const pass = document.getElementById('pass').value.trim();
+        function populateCategories() {
+            const select = document.getElementById('categorySelect');
+            select.innerHTML = '<option value="ALL">Tüm Kategoriler</option><option value="FAV">★ Favorilerim</option>';
+            categories.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.category_id;
+                opt.innerText = c.category_name;
+                select.appendChild(opt);
+            });
+        }
 
-            if(!host || !user || !pass) {
-                alert('Lütfen tüm alanları doldurun!');
+        function switchType(type) {
+            currentType = type;
+            ['tabLive', 'tabMovies', 'tabSeries'].forEach(id => {
+                document.getElementById(id).className = "px-3 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white";
+            });
+            if(type === 'live') document.getElementById('tabLive').className = "px-3 py-1.5 rounded-lg font-medium transition bg-indigo-600 text-white";
+            if(type === 'movies') document.getElementById('tabMovies').className = "px-3 py-1.5 rounded-lg font-medium transition bg-indigo-600 text-white";
+            if(type === 'series') document.getElementById('tabSeries').className = "px-3 py-1.5 rounded-lg font-medium transition bg-indigo-600 text-white";
+
+            fetchData();
+        }
+
+        function onCategoryChange() {
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const sort = document.getElementById('sortSelect').value;
+            const catId = document.getElementById('categorySelect').value;
+
+            let filtered = rawItems.filter(item => {
+                const name = (item.name || item.title || '').toLowerCase();
+                const matchesSearch = name.includes(search);
+                
+                let matchesCat = true;
+                if(catId === 'FAV') {
+                    matchesCat = favorites.includes(getStreamId(item));
+                } else if(catId !== 'ALL') {
+                    matchesCat = String(item.category_id) === String(catId);
+                }
+                return matchesSearch && matchesCat;
+            });
+
+            if(sort === 'az') {
+                filtered.sort((a,b) => (a.name || a.title || '').localeCompare(b.name || b.title || ''));
+            } else if(sort === 'za') {
+                filtered.sort((a,b) => (b.name || b.title || '').localeCompare(a.name || a.title || ''));
+            }
+
+            renderContent(filtered);
+        }
+
+        function renderContent(list) {
+            const container = document.getElementById('contentList');
+            container.innerHTML = '';
+
+            if(list.length === 0) {
+                container.innerHTML = '<div class="text-center text-xs text-slate-500 py-10">Hiç içerik bulunamadı.</div>';
                 return;
             }
 
-            document.getElementById('spinnerText').innerText = 'Kanallar Çekiliyor...';
-            document.getElementById('spinner').classList.remove('hidden');
-
-            try {
-                const res = await fetch(`/api/channels?host=${encodeURIComponent(host)}&user=${user}&pass=${pass}`);
-                rawChannels = await res.json();
-                
-                if(rawChannels.length === 0) {
-                    alert('Kanal bulunamadı veya bilgiler hatalı!');
-                } else {
-                    document.getElementById('statusLabel').innerText = 'Bağlandı (' + rawChannels.length + ' Kanal)';
-                    renderChannels(rawChannels);
-                    localStorage.setItem('saved_iptv_data', JSON.stringify({host, user, pass}));
-                }
-            } catch(e) {
-                alert('Sunucuya bağlanılamadı!');
-            } finally {
-                document.getElementById('spinner').classList.add('hidden');
-            }
-        }
-
-        function renderChannels(list) {
-            const container = document.getElementById('channelList');
-            container.innerHTML = '';
-            
             list.forEach(item => {
+                const id = getStreamId(item);
+                const isFav = favorites.includes(id);
+                const name = item.name || item.title;
+
                 const div = document.createElement('div');
-                div.className = 'p-2.5 bg-slate-800/40 hover:bg-indigo-600/30 rounded-lg cursor-pointer text-xs font-medium text-slate-200 hover:text-white transition truncate border border-slate-800/50';
-                div.innerText = item.name;
-                div.onclick = () => playChannel(item.stream_id);
+                div.className = 'flex items-center justify-between p-2.5 bg-slate-800/40 hover:bg-indigo-600/30 rounded-lg cursor-pointer text-xs font-medium transition border border-slate-800/50 group';
+                
+                div.innerHTML = `
+                    <span class="truncate pr-2 text-slate-200 group-hover:text-white" onclick="playItem('${id}')">${name}</span>
+                    <button onclick="toggleFav('${id}', event)" class="text-slate-500 hover:text-amber-400 p-1">
+                        <i class="fa-solid fa-star ${isFav ? 'text-amber-400' : ''}"></i>
+                    </button>
+                `;
                 container.appendChild(div);
             });
         }
 
-        function filterChannels() {
-            const q = document.getElementById('searchInput').value.toLowerCase();
-            renderChannels(rawChannels.filter(c => c.name.toLowerCase().includes(q)));
+        function getStreamId(item) {
+            return String(item.stream_id || item.series_id || item.vod_id);
         }
 
-        function playChannel(streamId) {
-            const host = document.getElementById('host').value.trim();
-            const user = document.getElementById('user').value.trim();
-            const pass = document.getElementById('pass').value.trim();
-            const streamUrl = `/proxy_stream?host=${encodeURIComponent(host)}&user=${user}&pass=${pass}&stream_id=${streamId}`;
+        function toggleFav(id, event) {
+            event.stopPropagation();
+            if(favorites.includes(id)) {
+                favorites = favorites.filter(f => f !== id);
+            } else {
+                favorites.push(id);
+            }
+            localStorage.setItem('iptv_favs', JSON.stringify(favorites));
+            applyFilters();
+        }
+
+        function playItem(id) {
+            let ext = 'ts';
+            if(currentType === 'movies') ext = 'mp4';
+            if(currentType === 'series') ext = 'mp4';
+
+            const streamUrl = `/proxy_stream?host=${encodeURIComponent(authData.host)}&user=${authData.user}&pass=${authData.pass}&stream_id=${id}&type=${currentType}&ext=${ext}`;
 
             const video = document.getElementById('videoPlayer');
             document.getElementById('spinner').classList.remove('hidden');
-            document.getElementById('spinnerText').innerText = 'Yayın Başlatılıyor...';
 
             if(hls) hls.destroy();
 
-            if (Hls.isSupported()) {
+            if (Hls.isSupported() && currentType === 'live') {
                 hls = new Hls();
                 hls.loadSource(streamUrl);
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    video.play().catch(() => {});
+                    video.play().catch(()=>{});
                     document.getElementById('spinner').classList.add('hidden');
                 });
-                hls.on(Hls.Events.ERROR, () => {
-                    document.getElementById('spinner').classList.add('hidden');
-                });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            } else {
                 video.src = streamUrl;
-                video.play();
+                video.play().catch(()=>{});
                 document.getElementById('spinner').classList.add('hidden');
             }
         }
 
-        window.onload = () => {
-            const saved = localStorage.getItem('saved_iptv_data');
-            if(saved) {
-                const {host, user, pass} = JSON.parse(saved);
-                document.getElementById('host').value = host;
-                document.getElementById('user').value = user;
-                document.getElementById('pass').value = pass;
-            }
+        function logout() {
+            localStorage.removeItem('iptv_auth');
+            location.reload();
         }
     </script>
 </body>
@@ -177,16 +333,40 @@ HTML_TEMPLATE = """
 def index():
     return render_template_string(HTML_TEMPLATE)
 
-@app.route('/api/channels')
-def get_channels():
+@app.route('/api/categories')
+def get_categories():
     host = request.args.get('host', '').rstrip('/')
     user = request.args.get('user')
     pass_ = request.args.get('pass')
-    url = f"{host}/player_api.php?username={user}&password={pass_}&action=get_live_streams"
+    type_ = request.args.get('type', 'live')
+
+    action = "get_live_categories"
+    if type_ == "movies": action = "get_vod_categories"
+    if type_ == "series": action = "get_series_categories"
+
+    url = f"{host}/player_api.php?username={user}&password={pass_}&action={action}"
+    try:
+        r = requests.get(url, timeout=10)
+        return Response(r.text, mimetype='application/json')
+    except Exception:
+        return Response("[]", mimetype='application/json')
+
+@app.route('/api/streams')
+def get_streams():
+    host = request.args.get('host', '').rstrip('/')
+    user = request.args.get('user')
+    pass_ = request.args.get('pass')
+    type_ = request.args.get('type', 'live')
+
+    action = "get_live_streams"
+    if type_ == "movies": action = "get_vod_streams"
+    if type_ == "series": action = "get_series"
+
+    url = f"{host}/player_api.php?username={user}&password={pass_}&action={action}"
     try:
         r = requests.get(url, timeout=12)
         return Response(r.text, mimetype='application/json')
-    except Exception as e:
+    except Exception:
         return Response("[]", mimetype='application/json')
 
 @app.route('/proxy_stream')
@@ -195,12 +375,20 @@ def proxy_stream():
     user = request.args.get('user')
     pass_ = request.args.get('pass')
     stream_id = request.args.get('stream_id')
-    stream_url = f"{host}/live/{user}/{pass_}/{stream_id}.ts"
-    
+    type_ = request.args.get('type', 'live')
+    ext = request.args.get('ext', 'ts')
+
+    if type_ == 'live':
+        stream_url = f"{host}/live/{user}/{pass_}/{stream_id}.{ext}"
+    elif type_ == 'movies':
+        stream_url = f"{host}/movie/{user}/{pass_}/{stream_id}.{ext}"
+    else:
+        stream_url = f"{host}/series/{user}/{pass_}/{stream_id}.{ext}"
+
     try:
         req = requests.get(stream_url, stream=True, timeout=15)
         return Response(req.iter_content(chunk_size=4096), content_type=req.headers.get('content-type', 'video/mp2t'))
-    except Exception as e:
+    except Exception:
         return Response("Yayın Hatası", status=500)
 
 if __name__ == '__main__':
